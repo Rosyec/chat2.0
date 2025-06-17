@@ -1,27 +1,13 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState, useRef, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Send, MoreVertical } from "lucide-react"
-
-interface User {
-  id: string
-  name: string
-  avatar: string
-}
-
-interface Message {
-  id: string
-  text: string
-  sender: User
-  timestamp: Date
-  isOwn: boolean
-}
-
-interface TypingUser extends User {}
+import type React from "react";
+import { useState, useRef, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Send, MoreVertical } from "lucide-react";
+import { socket } from "@/lib/socket";
+import { Message, TypingUser } from "./interfaces";
 
 const ChatView: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
@@ -69,21 +55,39 @@ const ChatView: React.FC = () => {
       timestamp: new Date(Date.now() - 120000),
       isOwn: true,
     },
-  ])
+  ]);
 
-  const [inputValue, setInputValue] = useState<string>("")
-  const [typingUsers, setTypingUsers] = useState<TypingUser[]>([])
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [inputValue, setInputValue] = useState<string>("");
+  const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = (): void => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   useEffect((): void => {
-    scrollToBottom()
-  }, [messages, typingUsers])
+    scrollToBottom();
+  }, [messages, typingUsers]);
+
+  useEffect((): void => {
+    socket.on("sendMessage", (value: Message) => {
+      console.log("Socket recibido: ", value);
+    });
+  }, []);
 
   const handleSendMessage = (): void => {
+    socket.emit("message", {
+      id: Date.now().toString(),
+      text: inputValue,
+      sender: {
+        id: "user1",
+        name: "Tú",
+        avatar: "/placeholder.svg?height=40&width=40",
+      },
+      timestamp: new Date(),
+      isOwn: true,
+    });
+
     if (inputValue.trim()) {
       const newMessage: Message = {
         id: Date.now().toString(),
@@ -95,9 +99,9 @@ const ChatView: React.FC = () => {
         },
         timestamp: new Date(),
         isOwn: true,
-      }
-      setMessages((prevMessages: Message[]) => [...prevMessages, newMessage])
-      setInputValue("")
+      };
+      setMessages((prevMessages: Message[]) => [...prevMessages, newMessage]);
+      setInputValue("");
 
       // Simular respuesta automática después de 2 segundos
       setTimeout((): void => {
@@ -107,7 +111,7 @@ const ChatView: React.FC = () => {
             name: "María García",
             avatar: "/placeholder.svg?height=40&width=40",
           },
-        ])
+        ]);
 
         setTimeout((): void => {
           const responseMessage: Message = {
@@ -120,31 +124,34 @@ const ChatView: React.FC = () => {
             },
             timestamp: new Date(),
             isOwn: false,
-          }
-          setMessages((prevMessages: Message[]) => [...prevMessages, responseMessage])
-          setTypingUsers([])
-        }, 2000)
-      }, 1000)
+          };
+          setMessages((prevMessages: Message[]) => [
+            ...prevMessages,
+            responseMessage,
+          ]);
+          setTypingUsers([]);
+        }, 2000);
+      }, 1000);
     }
-  }
+  };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      handleSendMessage()
+      e.preventDefault();
+      handleSendMessage();
     }
-  }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    setInputValue(e.target.value)
-  }
+    setInputValue(e.target.value);
+  };
 
   const formatTime = (date: Date): string => {
     return date.toLocaleTimeString("es-ES", {
       hour: "2-digit",
       minute: "2-digit",
-    })
-  }
+    });
+  };
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
@@ -152,7 +159,10 @@ const ChatView: React.FC = () => {
       <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <Avatar className="w-10 h-10">
-            <AvatarImage src="/placeholder.svg?height=40&width=40" alt="María García" />
+            <AvatarImage
+              src="/placeholder.svg?height=40&width=40"
+              alt="María García"
+            />
             <AvatarFallback>MG</AvatarFallback>
           </Avatar>
           <div>
@@ -170,19 +180,30 @@ const ChatView: React.FC = () => {
         {messages.map((message: Message) => (
           <div
             key={message.id}
-            className={`flex items-start space-x-3 ${message.isOwn ? "flex-row-reverse space-x-reverse" : ""}`}
+            className={`flex items-start space-x-3 ${
+              message.isOwn ? "flex-row-reverse space-x-reverse" : ""
+            }`}
           >
             {!message.isOwn && (
               <Avatar className="w-8 h-8 flex-shrink-0">
-                <AvatarImage src={message.sender.avatar || "/placeholder.svg"} alt={message.sender.name} />
+                <AvatarImage
+                  src={message.sender.avatar || "/placeholder.svg"}
+                  alt={message.sender.name}
+                />
                 <AvatarFallback>{message.sender.name.charAt(0)}</AvatarFallback>
               </Avatar>
             )}
 
             <div
-              className={`flex flex-col ${message.isOwn ? "items-end" : "items-start"} max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl`}
+              className={`flex flex-col ${
+                message.isOwn ? "items-end" : "items-start"
+              } max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl`}
             >
-              {!message.isOwn && <span className="text-xs text-gray-500 mb-1 px-1">{message.sender.name}</span>}
+              {!message.isOwn && (
+                <span className="text-xs text-gray-500 mb-1 px-1">
+                  {message.sender.name}
+                </span>
+              )}
 
               <div
                 className={`px-4 py-3 rounded-2xl break-words ${
@@ -194,12 +215,17 @@ const ChatView: React.FC = () => {
                 <p className="text-sm leading-relaxed">{message.text}</p>
               </div>
 
-              <span className="text-xs text-gray-400 mt-1 px-1">{formatTime(message.timestamp)}</span>
+              <span className="text-xs text-gray-400 mt-1 px-1">
+                {formatTime(message.timestamp)}
+              </span>
             </div>
 
             {message.isOwn && (
               <Avatar className="w-8 h-8 flex-shrink-0">
-                <AvatarImage src={message.sender.avatar || "/placeholder.svg"} alt={message.sender.name} />
+                <AvatarImage
+                  src={message.sender.avatar || "/placeholder.svg"}
+                  alt={message.sender.name}
+                />
                 <AvatarFallback>TÚ</AvatarFallback>
               </Avatar>
             )}
@@ -239,11 +265,11 @@ const ChatView: React.FC = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
 interface TypingIndicatorProps {
-  user: TypingUser
+  user: TypingUser;
 }
 
 const TypingIndicator: React.FC<TypingIndicatorProps> = ({ user }) => (
@@ -256,13 +282,22 @@ const TypingIndicator: React.FC<TypingIndicatorProps> = ({ user }) => (
       <span className="text-xs text-gray-500 mb-1">{user.name}</span>
       <div className="bg-gray-200 rounded-2xl rounded-bl-md px-4 py-3 max-w-xs">
         <div className="flex space-x-1">
-          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0s" }} />
-          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }} />
-          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
+          <div
+            className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+            style={{ animationDelay: "0s" }}
+          />
+          <div
+            className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+            style={{ animationDelay: "0.1s" }}
+          />
+          <div
+            className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+            style={{ animationDelay: "0.2s" }}
+          />
         </div>
       </div>
     </div>
   </div>
-)
+);
 
-export default ChatView
+export default ChatView;
