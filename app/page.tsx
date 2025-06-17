@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Send, MoreVertical } from "lucide-react";
 import { socket } from "@/lib/socket";
 import { Message, TypingUser } from "./interfaces";
+import $axios from "axios";
 
 const ChatView: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
@@ -73,6 +74,17 @@ const ChatView: React.FC = () => {
     socket.on("sendMessage", (value: Message) => {
       console.log("Socket recibido: ", value);
     });
+  }, []);
+
+  useEffect((): void => {
+    async function chatGPT() {
+      const reply = await $axios.post(`/api/gpt`, {
+        message: "Hola, como estas?",
+      });
+      console.log(reply.data);
+    }
+
+    chatGPT();
   }, []);
 
   const handleSendMessage = (): void => {
