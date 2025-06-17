@@ -17,7 +17,7 @@ app.prepare().then(() => {
     },
   });
   io.on("connection", (socket) => {
-    console.log("SOCKET CONECTADO: ", socket.id);
+    console.log("Socket conectado: ", socket.id);
     socket.on("message", (msg) => {
       io.emit("message", msg);
     });
