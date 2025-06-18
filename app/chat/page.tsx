@@ -10,58 +10,18 @@ import { socket } from "@/lib/socket";
 import { Message, TypingUser } from "@/app/interfaces";
 import { useRouter } from "next/navigation";
 // import $axios from "axios";
-import { initAuthObserver, logOut } from "@/firebase/firebase";
+import {
+  initAuthObserver,
+  logOut,
+  saveMessage,
+  readMessages,
+} from "@/firebase/firebase";
 import { useAuthStore } from "@/store/user.store";
 
 const ChatView: React.FC = () => {
   const router = useRouter();
   const store = useAuthStore();
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      text: "¡Hola! ¿Cómo estás?",
-      sender: {
-        id: "user2",
-        name: "María García",
-        avatar: "/placeholder.svg?height=40&width=40",
-      },
-      timestamp: new Date(Date.now() - 300000),
-      isOwn: false,
-    },
-    {
-      id: "2",
-      text: "¡Muy bien, gracias! ¿Y tú qué tal?",
-      sender: {
-        id: store.id,
-        name: "Tú",
-        avatar: store.avatar,
-      },
-      timestamp: new Date(Date.now() - 240000),
-      isOwn: true,
-    },
-    {
-      id: "3",
-      text: "Genial, trabajando en algunos proyectos nuevos. ¿Te gustaría ver lo que estoy haciendo?",
-      sender: {
-        id: "user2",
-        name: "María García",
-        avatar: "/placeholder.svg?height=40&width=40",
-      },
-      timestamp: new Date(Date.now() - 180000),
-      isOwn: false,
-    },
-    {
-      id: "4",
-      text: "¡Por supuesto! Me encantaría verlo",
-      sender: {
-        id: store.id,
-        name: "Tú",
-        avatar: store.avatar,
-      },
-      timestamp: new Date(Date.now() - 120000),
-      isOwn: true,
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
 
   const [inputValue, setInputValue] = useState<string>("");
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
@@ -71,12 +31,79 @@ const ChatView: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const handleSendMessage = (): void => {
+    const message: Message = {
+      id: Date.now().toString(),
+      text: inputValue,
+      sender: {
+        id: store.id,
+        name: store.name,
+        avatar: store.avatar,
+      },
+      timestamp: new Date(),
+      isOwn: false,
+    };
+    socket.emit("message", message);
+    saveMessage(message);
+    setInputValue("");
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>): void => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    setInputValue(e.target.value);
+  };
+
+  const formatTime = (value: Date | string): string => {
+    const date = new Date(value);
+    return date.toLocaleTimeString("es-ES", {
+      hour12: true,
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   useEffect((): void => {
     scrollToBottom();
   }, [messages, typingUsers]);
 
   useEffect((): void => {
     socket.on("sendMessage", (value: Message) => {
+      if (value.sender.id !== store.id) {
+        setTimeout((): void => {
+          setTypingUsers([
+            {
+              ...value.sender,
+            },
+          ]);
+
+          setTimeout((): void => {
+            const responseMessage: Message = {
+              ...value,
+              isOwn: false,
+            };
+            setMessages((prevMessages: Message[]) => [
+              ...prevMessages,
+              responseMessage,
+            ]);
+            setTypingUsers([]);
+          }, 2000);
+        }, 1000);
+      } else {
+        const responseMessage: Message = {
+          ...value,
+          isOwn: true,
+        };
+        setMessages((prevMessages: Message[]) => [
+          ...prevMessages,
+          responseMessage,
+        ]);
+      }
       console.log("Socket recibido: ", value);
     });
   }, []);
@@ -92,87 +119,31 @@ const ChatView: React.FC = () => {
     chatGPT();
   }, []);
 
-  const handleSendMessage = (): void => {
-    socket.emit("message", {
-      id: Date.now().toString(),
-      text: inputValue,
-      sender: {
-        id: store.id,
-        name: "Tú",
-        avatar: store.avatar,
-      },
-      timestamp: new Date(),
-      isOwn: true,
-    });
-
-    if (inputValue.trim()) {
-      const newMessage: Message = {
-        id: Date.now().toString(),
-        text: inputValue,
-        sender: {
-          id: store.id,
-          name: "Tú",
-          avatar: store.avatar,
-        },
-        timestamp: new Date(),
-        isOwn: true,
-      };
-      setMessages((prevMessages: Message[]) => [...prevMessages, newMessage]);
-      setInputValue("");
-
-      // Simular respuesta automática después de 2 segundos
-      setTimeout((): void => {
-        setTypingUsers([
-          {
-            id: "user2",
-            name: "María García",
-            avatar: "/placeholder.svg?height=40&width=40",
-          },
-        ]);
-
-        setTimeout((): void => {
-          const responseMessage: Message = {
-            id: (Date.now() + 1).toString(),
-            text: "¡Excelente mensaje! 👍",
-            sender: {
-              id: "user2",
-              name: "María García",
-              avatar: "/placeholder.svg?height=40&width=40",
-            },
-            timestamp: new Date(),
-            isOwn: false,
-          };
-          setMessages((prevMessages: Message[]) => [
-            ...prevMessages,
-            responseMessage,
-          ]);
-          setTypingUsers([]);
-        }, 2000);
-      }, 1000);
-    }
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>): void => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    setInputValue(e.target.value);
-  };
-
-  const formatTime = (date: Date): string => {
-    return date.toLocaleTimeString("es-ES", {
-      hour12: true,
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
   useEffect(() => {
     initAuthObserver();
+  }, []);
+
+  useEffect(() => {
+    async function read() {
+      const result = await readMessages();
+      setMessages([]);
+      result.forEach((el) => {
+        const message: Message = {
+          id: el.data().id,
+          text: el.data().text,
+          sender: {
+            id: el.data().sender.id,
+            name: el.data().sender.name,
+            avatar: el.data().sender.avatar,
+          },
+          timestamp: el.data().timestamp.toDate(),
+          isOwn: el.data().sender.id === store.id ? true : false,
+        };
+        setMessages((prevMessages: Message[]) => [...prevMessages, message]);
+      });
+    }
+
+    read();
   }, []);
 
   useEffect(() => {
@@ -198,9 +169,9 @@ const ChatView: React.FC = () => {
             {/* <p className="text-sm text-green-500">En línea</p> */}
           </div>
         </div>
-        <Button variant="ghost" size="icon" aria-label="Más opciones">
+        {/* <Button variant="ghost" size="icon" aria-label="Más opciones">
           <MoreVertical className="w-5 h-5" />
-        </Button>
+        </Button> */}
         <Button
           variant="ghost"
           size="icon"
@@ -251,9 +222,11 @@ const ChatView: React.FC = () => {
                 <p className="text-sm leading-relaxed">{message.text}</p>
               </div>
 
-              <span className="text-xs text-gray-400 mt-1 px-1">
-                {formatTime(message.timestamp)}
-              </span>
+              {message.timestamp && (
+                <span className="text-xs text-gray-400 mt-1 px-1">
+                  {formatTime(message.timestamp)}
+                </span>
+              )}
             </div>
 
             {message.isOwn && (

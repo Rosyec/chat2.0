@@ -1,10 +1,11 @@
 import { app } from "@/lib/firebase.config";
-import { doc, getFirestore } from "firebase/firestore";
+import { doc, getFirestore, orderBy, query } from "firebase/firestore";
 import { GithubAuthProvider, onAuthStateChanged, signOut } from "firebase/auth";
 import { GoogleAuthProvider } from "firebase/auth";
 import { getAuth, signInWithPopup } from "firebase/auth";
 import { collection, addDoc, getDoc, getDocs } from "firebase/firestore";
 import { useAuthStore } from "@/store/user.store";
+import { Message } from "@/app/interfaces";
 
 const db = getFirestore(app)
 
@@ -79,13 +80,9 @@ export async function logOut() {
     signOut(auth).then(() => { console.log('Logout success') }).catch((error) => { })
 }
 
-export async function saveMessage() {
+export async function saveMessage(message: Message) {
     try {
-        const docRef = await addDoc(collection(db, "chat"), {
-            first: "Ada",
-            last: "Lovelace",
-            born: 1815
-        });
+        const docRef = await addDoc(collection(db, "chat"), message);
         console.log("Document written with ID: ", docRef.id);
     } catch (e) {
         console.error("Error adding document: ", e);
@@ -103,8 +100,6 @@ export async function readOneMessage() {
 }
 
 export async function readMessages() {
-    const querySnapshot = await getDocs(collection(db, "chat"));
-    querySnapshot.forEach((doc) => {
-        console.log(`${doc.id} => ${doc.data()}`);
-    });
+    const queryDB = query(collection(db, "chat"), orderBy('timestamp', 'asc'));
+    return await getDocs(queryDB)
 }
