@@ -8,9 +8,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Send, MoreVertical } from "lucide-react";
 import { socket } from "@/lib/socket";
 import { Message, TypingUser } from "@/app/interfaces";
+import { useRouter } from "next/navigation";
 import $axios from "axios";
+import { getAuth } from "firebase/auth";
+import { app } from "@/lib/firebase.config";
 
 const ChatView: React.FC = () => {
+  const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -164,6 +168,13 @@ const ChatView: React.FC = () => {
       minute: "2-digit",
     });
   };
+
+  useEffect(() => {
+    const auth = getAuth(app);
+    if (!auth.currentUser) {
+      router.push(`/`);
+    }
+  }, [getAuth(app)]);
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">

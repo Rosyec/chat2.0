@@ -3,21 +3,27 @@
 import { Mail, Github } from "lucide-react";
 import { loginWithGithub, loginWithGoogle } from "@/firebase/firebase";
 import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/store/user.store";
 
 export default function Component() {
   const router = useRouter();
-  const handleGithubLogin = () => {
-    loginWithGithub();
-    router.push(`/chat`);
-    // Implementar lógica de login con Facebook
-    console.log("Login with Facebook");
+  const store = useAuthStore();
+  const handleGithubLogin = async () => {
+    const result = await loginWithGithub();
+    if (result) {
+      store.setAuth(result);
+      router.push(`/chat`);
+      console.log("Login with Github");
+    }
   };
 
-  const handleGoogleLogin = () => {
-    loginWithGoogle();
-    router.push(`/chat`);
-    // Implementar lógica de login con Google
-    console.log("Login with Google");
+  const handleGoogleLogin = async () => {
+    const result = await loginWithGoogle();
+    if (result) {
+      store.setAuth(result);
+      router.push(`/chat`);
+      console.log("Login with Google");
+    }
   };
 
   return (

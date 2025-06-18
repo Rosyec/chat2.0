@@ -4,6 +4,7 @@ import { GithubAuthProvider, signOut } from "firebase/auth";
 import { GoogleAuthProvider } from "firebase/auth";
 import { getAuth, signInWithPopup } from "firebase/auth";
 import { collection, addDoc, getDoc, getDocs } from "firebase/firestore";
+import { User } from "@/store/user.store";
 
 const db = getFirestore(app)
 
@@ -12,12 +13,21 @@ const githubProvider = new GithubAuthProvider();
 
 export async function loginWithGoogle() {
     const auth = getAuth()
+    let user: User = {
+        id: '',
+        name: '',
+        avatar: ''
+    }
     signInWithPopup(auth, googleProvider).then((result) => {
         // This gives you a Google Access Token. You can use it to access the Google API.
         const credential = GoogleAuthProvider.credentialFromResult(result);
         if (credential) {
             const accessToken = credential.accessToken;
-            const user = result.user;
+            // const user = result.user;
+            user.id = result.user.uid ?? ''
+            user.name = result.user.displayName ?? ''
+            user.avatar = result.user.photoURL ?? ''
+
             console.log('GOOGLE: ', user)
             // The signed-in user info.
             // IdP data available using getAdditionalUserInfo(result)
@@ -26,18 +36,27 @@ export async function loginWithGoogle() {
     }).catch((error) => {
 
     })
+
+    return Object.values(user).length > 0 ? user : null
 }
 
 export async function loginWithGithub() {
     const auth = getAuth()
+    let user: User = {
+        id: '',
+        name: '',
+        avatar: ''
+    }
     signInWithPopup(auth, githubProvider).then((result) => {
         // The signed-in user info.
-        const user = result.user;
         // This gives you a Facebook Access Token. You can use it to access the Facebook API.
         const credential = GithubAuthProvider.credentialFromResult(result);
         if (credential) {
             const accessToken = credential.accessToken;
-            const user = result.user;
+            // const user = result.user;
+            user.id = result.user.uid ?? ''
+            user.name = result.user.displayName ?? ''
+            user.avatar = result.user.photoURL ?? ''
             console.log('GITHUB: ', user)
             // IdP data available using getAdditionalUserInfo(result)
         }
@@ -53,6 +72,8 @@ export async function loginWithGithub() {
         // The AuthCredential type that was used.
         const credential = GithubAuthProvider.credentialFromError(error);
     })
+
+    return Object.values(user).length > 0 ? user : null
 
 }
 
