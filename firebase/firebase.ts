@@ -1,10 +1,10 @@
 import { app } from "@/lib/firebase.config";
 import { doc, getFirestore } from "firebase/firestore";
-import { GithubAuthProvider, signOut } from "firebase/auth";
+import { GithubAuthProvider, onAuthStateChanged, signOut } from "firebase/auth";
 import { GoogleAuthProvider } from "firebase/auth";
 import { getAuth, signInWithPopup } from "firebase/auth";
 import { collection, addDoc, getDoc, getDocs } from "firebase/firestore";
-import { User } from "@/store/user.store";
+import { useAuthStore } from "@/store/user.store";
 
 const db = getFirestore(app)
 
@@ -13,22 +13,13 @@ const githubProvider = new GithubAuthProvider();
 
 export async function loginWithGoogle() {
     const auth = getAuth()
-    let user: User = {
-        id: '',
-        name: '',
-        avatar: ''
-    }
     signInWithPopup(auth, googleProvider).then((result) => {
         // This gives you a Google Access Token. You can use it to access the Google API.
         const credential = GoogleAuthProvider.credentialFromResult(result);
         if (credential) {
             const accessToken = credential.accessToken;
-            // const user = result.user;
-            user.id = result.user.uid ?? ''
-            user.name = result.user.displayName ?? ''
-            user.avatar = result.user.photoURL ?? ''
-
-            console.log('GOOGLE: ', user)
+            const user = result.user;
+            // console.log('GOOGLE: ', user)
             // The signed-in user info.
             // IdP data available using getAdditionalUserInfo(result)
         }
@@ -36,28 +27,19 @@ export async function loginWithGoogle() {
     }).catch((error) => {
 
     })
-
-    return Object.values(user).length > 0 ? user : null
 }
 
 export async function loginWithGithub() {
     const auth = getAuth()
-    let user: User = {
-        id: '',
-        name: '',
-        avatar: ''
-    }
+
     signInWithPopup(auth, githubProvider).then((result) => {
         // The signed-in user info.
         // This gives you a Facebook Access Token. You can use it to access the Facebook API.
         const credential = GithubAuthProvider.credentialFromResult(result);
         if (credential) {
             const accessToken = credential.accessToken;
-            // const user = result.user;
-            user.id = result.user.uid ?? ''
-            user.name = result.user.displayName ?? ''
-            user.avatar = result.user.photoURL ?? ''
-            console.log('GITHUB: ', user)
+            const user = result.user;
+            // console.log('GITHUB: ', user)
             // IdP data available using getAdditionalUserInfo(result)
         }
 
@@ -72,9 +54,24 @@ export async function loginWithGithub() {
         // The AuthCredential type that was used.
         const credential = GithubAuthProvider.credentialFromError(error);
     })
+}
 
-    return Object.values(user).length > 0 ? user : null
+export function initAuthObserver() {
+    const auth = getAuth()
+    const { setAuth, clearAuth } = useAuthStore.getState()
 
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            const { uid, displayName, photoURL } = user
+            setAuth({
+                id: uid,
+                name: displayName || '',
+                avatar: photoURL || '',
+            })
+        } else {
+            clearAuth()
+        }
+    })
 }
 
 export async function logOut() {

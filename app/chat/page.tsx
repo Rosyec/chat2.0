@@ -5,16 +5,17 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, MoreVertical } from "lucide-react";
+import { Send, MoreVertical, LogOut } from "lucide-react";
 import { socket } from "@/lib/socket";
 import { Message, TypingUser } from "@/app/interfaces";
 import { useRouter } from "next/navigation";
-import $axios from "axios";
-import { getAuth } from "firebase/auth";
-import { app } from "@/lib/firebase.config";
+// import $axios from "axios";
+import { initAuthObserver, logOut } from "@/firebase/firebase";
+import { useAuthStore } from "@/store/user.store";
 
 const ChatView: React.FC = () => {
   const router = useRouter();
+  const store = useAuthStore();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -31,9 +32,9 @@ const ChatView: React.FC = () => {
       id: "2",
       text: "¡Muy bien, gracias! ¿Y tú qué tal?",
       sender: {
-        id: "user1",
+        id: store.id,
         name: "Tú",
-        avatar: "/placeholder.svg?height=40&width=40",
+        avatar: store.avatar,
       },
       timestamp: new Date(Date.now() - 240000),
       isOwn: true,
@@ -53,9 +54,9 @@ const ChatView: React.FC = () => {
       id: "4",
       text: "¡Por supuesto! Me encantaría verlo",
       sender: {
-        id: "user1",
+        id: store.id,
         name: "Tú",
-        avatar: "/placeholder.svg?height=40&width=40",
+        avatar: store.avatar,
       },
       timestamp: new Date(Date.now() - 120000),
       isOwn: true,
@@ -96,9 +97,9 @@ const ChatView: React.FC = () => {
       id: Date.now().toString(),
       text: inputValue,
       sender: {
-        id: "user1",
+        id: store.id,
         name: "Tú",
-        avatar: "/placeholder.svg?height=40&width=40",
+        avatar: store.avatar,
       },
       timestamp: new Date(),
       isOwn: true,
@@ -109,9 +110,9 @@ const ChatView: React.FC = () => {
         id: Date.now().toString(),
         text: inputValue,
         sender: {
-          id: "user1",
+          id: store.id,
           name: "Tú",
-          avatar: "/placeholder.svg?height=40&width=40",
+          avatar: store.avatar,
         },
         timestamp: new Date(),
         isOwn: true,
@@ -164,17 +165,21 @@ const ChatView: React.FC = () => {
 
   const formatTime = (date: Date): string => {
     return date.toLocaleTimeString("es-ES", {
+      hour12: true,
       hour: "2-digit",
       minute: "2-digit",
     });
   };
 
   useEffect(() => {
-    const auth = getAuth(app);
-    if (!auth.currentUser) {
+    initAuthObserver();
+  }, []);
+
+  useEffect(() => {
+    if (store.id === "" || store.name === "" || store.avatar === "") {
       router.push(`/`);
     }
-  }, [getAuth(app)]);
+  }, [store]);
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
@@ -195,6 +200,14 @@ const ChatView: React.FC = () => {
         </div>
         <Button variant="ghost" size="icon" aria-label="Más opciones">
           <MoreVertical className="w-5 h-5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={logOut}
+          aria-label="Cerrar sesión"
+        >
+          <LogOut className="w-5 h-5" />
         </Button>
       </div>
 

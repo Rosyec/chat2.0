@@ -4,27 +4,29 @@ import { Mail, Github } from "lucide-react";
 import { loginWithGithub, loginWithGoogle } from "@/firebase/firebase";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/user.store";
+import { initAuthObserver } from "@/firebase/firebase";
+import { useEffect } from "react";
 
 export default function Component() {
   const router = useRouter();
   const store = useAuthStore();
   const handleGithubLogin = async () => {
-    const result = await loginWithGithub();
-    if (result) {
-      store.setAuth(result);
-      router.push(`/chat`);
-      console.log("Login with Github");
-    }
+    loginWithGithub();
   };
 
   const handleGoogleLogin = async () => {
-    const result = await loginWithGoogle();
-    if (result) {
-      store.setAuth(result);
-      router.push(`/chat`);
-      console.log("Login with Google");
-    }
+    await loginWithGoogle();
   };
+
+  useEffect(() => {
+    initAuthObserver();
+  }, []);
+
+  useEffect(() => {
+    if (store.id !== "" || store.name !== "" || store.avatar !== "") {
+      router.push(`/chat`);
+    }
+  }, [store]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
