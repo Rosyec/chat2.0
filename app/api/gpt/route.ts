@@ -2,7 +2,9 @@ import { OpenAI } from "openai";
 import { NextRequest, NextResponse } from "next/server";
 
 const openai = new OpenAI({
+    // apiKey: process.env.DEEPSEEK_API_KEY,
     apiKey: process.env.OPENAI_API_KEY,
+    // baseURL: 'https://api.deepseek.com'
 });
 
 export async function POST(req: NextRequest) {
@@ -11,7 +13,9 @@ export async function POST(req: NextRequest) {
         const userMessage = body.message || "Responde como si no entendiste nada.";
 
         const chatResponse = await openai.chat.completions.create({
+            // model: "deepseek-chat",
             model: "gpt-3.5-turbo",
+            // messages: [{ role: "system", content: userMessage }],
             messages: [{ role: "user", content: userMessage }],
         });
 
