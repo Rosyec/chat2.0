@@ -165,7 +165,7 @@ const ChatView: React.FC = () => {
             <AvatarFallback>C</AvatarFallback>
           </Avatar>
           <div>
-            <h1 className="font-semibold text-gray-900">Chat</h1>
+            <h1 className="font-semibold text-gray-900">Dev Chat</h1>
             {/* <p className="text-sm text-green-500">En línea</p> */}
           </div>
         </div>
@@ -201,6 +201,16 @@ const ChatView: React.FC = () => {
               </Avatar>
             )}
 
+            {message.isOwn && (
+              <Avatar className="w-8 h-8 flex-shrink-0">
+                <AvatarImage
+                  src={message.sender.avatar || "/placeholder.svg"}
+                  alt={message.sender.name}
+                />
+                <AvatarFallback>TÚ</AvatarFallback>
+              </Avatar>
+            )}
+
             <div
               className={`flex flex-col ${
                 message.isOwn ? "items-end" : "items-start"
@@ -228,16 +238,6 @@ const ChatView: React.FC = () => {
                 </span>
               )}
             </div>
-
-            {message.isOwn && (
-              <Avatar className="w-8 h-8 flex-shrink-0">
-                <AvatarImage
-                  src={message.sender.avatar || "/placeholder.svg"}
-                  alt={message.sender.name}
-                />
-                <AvatarFallback>TÚ</AvatarFallback>
-              </Avatar>
-            )}
           </div>
         ))}
 
